@@ -1,26 +1,34 @@
-name: build-docker
+name: build-native2
 on: workflow_dispatch
 jobs:
   b:
     runs-on: ubuntu-22.04
     timeout-minutes: 350
+    env:
+      ac_cv_sizeof_wchar_t: 4
+      ac_cv_sizeof_long: 4
+      ac_cv_sizeof_long_long: 8
+      ac_cv_sizeof_void_p: 4
+      ac_cv_sizeof_int: 4
+      ac_cv_sizeof_short: 2
+      ac_cv_sizeof_char: 1
+      ac_cv_c_bigendian: no
+      ac_cv_type_wchar_t: yes
+      ac_cv_func_wcrtomb: yes
+      ac_cv_func_wcslen: yes
     steps:
       - uses: actions/checkout@v4
-      - name: 清理磁盘
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h /
-      - name: Docker 构建
-        run: docker build -t luantiweb .
-      - name: 取出产物
-        run: |
-          docker create --name out luantiweb
-          docker cp out:/luanti-wasm/www ./www
-          docker rm out
-      - name: 体积报告
-        run: |
-          du -sh www
-          find . -name '*.wasm' -exec ls -lh {} \;
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --version
+      - run: sudo apt-get update && sudo apt-get install -y wget python3 build-essential cmake tclsh zip zstd gettext patch pkg-config
+      - uses: actions/cache@v4
+        with:
+          path: emsdk
+          key: emsdk-608
+      - run: ./build_all.sh
+      - run: du -sh www; find . -name '*.wasm' -exec ls -lh {} \;
       - uses: actions/upload-artifact@v4
         with:
           name: luanti-web
