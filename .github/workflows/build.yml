@@ -1,14 +1,22 @@
-name: build
-
-on: push
-
+name: build-luanti-wasm
+on: workflow_dispatch
 jobs:
-  docker:
-    name: "Build Docker Image"
-    runs-on: ubuntu-latest
+  b:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
     steps:
-      - uses: actions/checkout@v3
-      - name: Build docker image
-        run: |
-          docker build . -t luantiweb
-          docker run --rm luantiweb ls -la /luanti-wasm/www
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: sudo apt-get update && sudo apt-get install -y wget python3 build-essential cmake tclsh zip zstd gettext
+      - uses: actions/cache@v4
+        with:
+          path: emsdk
+          key: emsdk-608
+      - run: ./build_all.sh
+      - run: du -sh www; find . -name '*.wasm' -exec ls -lh {} \;
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luanti-web
+          path: www/
