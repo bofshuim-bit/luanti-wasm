@@ -1,0 +1,58 @@
+name: build-luanti-wasm
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  wasm:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Node 24（install_emsdk.sh 强制要求）
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 确认 Node 版本
+        run: node --version
+
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y \
+            wget python3 git build-essential cmake tclsh zip zstd gettext
+
+      - name: 缓存 emsdk
+        uses: actions/cache@v4
+        with:
+          path: emsdk
+          key: emsdk-6.0.8-${{ runner.os }}
+
+      - name: 执行构建
+        run: ./build_all.sh
+
+      - name: 产物体积报告
+        if: always()
+        run: |
+          echo "=== www 目录 ==="
+          du -sh www 2>/dev/null || true
+          echo "=== wasm 文件 ==="
+          find . -name '*.wasm' -exec ls -lh {} \; 2>/dev/null || true
+          echo "=== 各子目录 ==="
+          du -sh www/*/ 2>/dev/null || true
+          echo "=== 总计 ==="
+          find www -type f | wc -l
+
+      - name: 上传产物
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: luanti-web
+          path: www/
+          retention-days: 14
+          compression-level: 0
