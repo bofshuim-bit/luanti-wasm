@@ -1,4 +1,4 @@
-name: build-luanti-wasm
+name: build-docker
 on: workflow_dispatch
 jobs:
   b:
@@ -6,16 +6,21 @@ jobs:
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: sudo apt-get update && sudo apt-get install -y wget python3 build-essential cmake tclsh zip zstd gettext
-      - uses: actions/cache@v4
-        with:
-          path: emsdk
-          key: emsdk-608
-      - run: ./build_all.sh
-      - run: du -sh www; find . -name '*.wasm' -exec ls -lh {} \;
+      - name: 清理磁盘
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Docker 构建
+        run: docker build -t luantiweb .
+      - name: 取出产物
+        run: |
+          docker create --name out luantiweb
+          docker cp out:/luanti-wasm/www ./www
+          docker rm out
+      - name: 体积报告
+        run: |
+          du -sh www
+          find . -name '*.wasm' -exec ls -lh {} \;
       - uses: actions/upload-artifact@v4
         with:
           name: luanti-web
